@@ -1,69 +1,69 @@
-import cv2
-import numpy as np
-from ultralytics import YOLO
-import cvzone
-import numpy as np
+# นำเข้าไลบรารีที่จำเป็น
+import cv2  # ไลบรารี OpenCV สำหรับงานคอมพิวเตอร์วิชั่น
+from ultralytics import YOLO  # โมเดล YOLOv8 สำหรับการตรวจจับวัตถุ
+import cvzone  # ไลบรารี OpenCV สำหรับการแสดงข้อความที่ง่ายขึ้น
 
-def RGB(event, x, y, flags, param):
-    if event == cv2.EVENT_MOUSEMOVE:
-        point = [x, y]
-        print(point)
+# สร้างหน้าต่างชื่อ 'Fall Detection'
+cv2.namedWindow('Fall Detection')
 
-cv2.namedWindow('RGB')
-cv2.setMouseCallback('RGB', RGB)
-# Load the YOLOv8 model
-model = YOLO("yolo11s.pt")
-names=model.model.names
-# Open the video file (use video file or webcam, here using webcam)
-cap = cv2.VideoCapture('fall.mp4')
-# cap = cv2.VideoCapture(0)
-count=0
+# โหลดโมเดล YOLO ที่ผ่านการฝึกมาแล้ว (ตรวจจับคน)
+model = YOLO("best.pt")  # เปลี่ยนชื่อไฟล์เป็นโมเดลของคุณ
+names = model.model.names  # ดึงชื่อของคลาสจากโมเดล เช่น 'person'
 
+# เปิดไฟล์วิดีโอ (หรือใช้กล้องโดยเปลี่ยนเป็น index 0)
+cap = cv2.VideoCapture('fall.mp4')  # หรือใช้ 0 สำหรับกล้อง
 
+count = 0  # ตัวนับเฟรม
+
+# วนลูปเพื่อประมวลผลเฟรมจากวิดีโอ
 while True:
-    ret,frame = cap.read()
+    ret, frame = cap.read()  # อ่านเฟรม
     if not ret:
-        break
+        break  # ออกจากลูปเมื่อวิดีโอจบ
+
     count += 1
     if count % 3 != 0:
-        continue
+        continue  # ประมวลผลแค่ทุก 3 เฟรม เพื่อความเร็ว
 
-    frame = cv2.resize(frame, (1020, 600))
-    
-    # Run YOLOv8 tracking on the frame, persisting tracks between frames
-    results = model.track(frame, persist=True,classes=0)
+    frame = cv2.resize(frame, (1020, 600))  # ปรับขนาดเฟรมให้เหมาะสม
 
-    # Check if there are any boxes in the results
+    # ตรวจจับและติดตามคน
+    results = model.track(frame, persist=True)
+
+    # ตรวจสอบว่ามีการตรวจจับและมี track id หรือไม่
     if results[0].boxes is not None and results[0].boxes.id is not None:
-        # Get the boxes (x, y, w, h), class IDs, track IDs, and confidences
-        boxes = results[0].boxes.xyxy.int().cpu().tolist()  # Bounding boxes
-        class_ids = results[0].boxes.cls.int().cpu().tolist()  # Class IDs
-        track_ids = results[0].boxes.id.int().cpu().tolist()  # Track IDs
-        confidences = results[0].boxes.conf.cpu().tolist()  # Confidence score
-       
+        # ดึงข้อมูลจากผลลัพธ์
+        boxes = results[0].boxes.xyxy.int().cpu().tolist()
+        class_ids = results[0].boxes.cls.int().cpu().tolist()
+        track_ids = results[0].boxes.id.int().cpu().tolist()
+        confidences = results[0].boxes.conf.cpu().tolist()
+
+        # วนลูปแต่ละวัตถุที่ตรวจจับได้
         for box, class_id, track_id, conf in zip(boxes, class_ids, track_ids, confidences):
             c = names[class_id]
             x1, y1, x2, y2 = box
-            h=y2-y1
-            w=x2-x1
-            thresh=h-w
-            print(thresh)
-            
+            h = y2 - y1  # ความสูงของบ็อกซ์
+            w = x2 - x1  # ความกว้างของบ็อกซ์
+            thresh = h - w  # ความต่างระหว่างความสูงกับความกว้าง
+
+            print(f"TrackID {track_id} | Height: {h}, Width: {w} → Thresh: {thresh}")
+
             if thresh <= 0:
-                cv2.rectangle(frame,(x1,y1),(x2,y2),(0,0,255),2)
-                cvzone.putTextRect(frame,f'{track_id}',(x1,y2),1,1)
-                cvzone.putTextRect(frame,f"{'Fall'}",(x1,y1),1,1)
-
-                
+                # แสดงผลคนที่ล้มด้วยกรอบสีแดง
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cvzone.putTextRect(frame, f'Fall ({track_id})', (x1, y1 - 10), 1, 1, (0, 0, 255), 2)
             else:
-                cv2.rectangle(frame,(x1,y1),(x2,y2),(0,255,0),2)
-                cvzone.putTextRect(frame,f'{track_id}',(x1,y2),1,1)
-                cvzone.putTextRect(frame,f"{'Normal'}",(x1,y1),1,1)
+                # แสดงผลคนที่ปกติด้วยกรอบสีเขียว
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cvzone.putTextRect(frame, f'Person ({track_id})', (x1, y1 - 10), 1, 1, (0, 255, 0), 2)
 
-    cv2.imshow("RGB", frame)
+    # แสดงผลลัพธ์ในหน้าต่าง 'Fall Detection'
+    cv2.imshow("Fall Detection", frame)
+
+    # กด 'q' เพื่อออกจากลูป
     if cv2.waitKey(1) & 0xFF == ord("q"):
-       break
+        break
 
-# Release the video capture object and close the display window
+# ปิดการจับภาพและหน้าต่างทั้งหมด
 cap.release()
 cv2.destroyAllWindows()

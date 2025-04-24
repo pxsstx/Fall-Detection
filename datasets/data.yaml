@@ -1,0 +1,13 @@
+train: /Users/pxsst/Projects/vs-code/Python/CPE270/Fall-Detection/datasets/train/images
+val: /Users/pxsst/Projects/vs-code/Python/CPE270/Fall-Detection/datasets/valid/images
+test: /Users/pxsst/Projects/vs-code/Python/CPE270/Fall-Detection/datasets/test/images
+
+nc: 2
+names: ['Fall-Detected', 'Person']
+
+roboflow:
+  workspace: study-vhhvc
+  project: falldown-md8f4
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/study-vhhvc/falldown-md8f4/dataset/2
